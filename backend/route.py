@@ -14,7 +14,10 @@ async def create_item(image: Image):
     return 'Recebido'
 
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+GOOGLE_API_KEY=userdata.get('AIzaSyAnUYDGbJ5x0VggngIszy0UCh_6m8axbF4')
+
+genai.configure(api_key=GOOGLE_API_KEY)
+
 model = genai.GenerativeModel('gemini-pro')
 
 lista_alimentos= ['carne', 'leite', 'ovo', 'arroz']
