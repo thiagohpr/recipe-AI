@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import tensorflow as tf
 from io import BytesIO
 from PIL import Image as PILImage
+from pydantic import BaseModel
+import google.generativeai as genai
+import os
 
 app = FastAPI()
 
@@ -68,3 +71,15 @@ async def upload_image(files: List[UploadFile] = File(...)):
 
     print(predictions)
     return {"filename": file.filename, "content-type": file.content_type}
+
+
+GOOGLE_API_KEY=userdata.get('AIzaSyAnUYDGbJ5x0VggngIszy0UCh_6m8axbF4')
+
+genai.configure(api_key=GOOGLE_API_KEY)
+
+model = genai.GenerativeModel('gemini-pro')
+
+lista_alimentos= ['carne', 'leite', 'ovo', 'arroz']
+req = ','.join(lista_alimentos)
+
+response = model.generate_content("Write a recipe using the following ingredients {}.".format(req))
