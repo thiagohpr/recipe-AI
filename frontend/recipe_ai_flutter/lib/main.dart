@@ -1,153 +1,114 @@
-import 'package:english_words/english_words.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => MyAppState(),
-      child: MaterialApp(
-        title: 'Recipe App',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Color.fromRGBO(0, 255, 0, 1.0)),
-        ),
-        home: MyHomePage(),
-      ),
+    return MaterialApp(
+      title: 'Recipe Suggestion App',
+      home: ImageUploadScreen(),
     );
   }
 }
 
-class MyAppState extends ChangeNotifier {
-  var current = WordPair.random();
-
-  void getNext() {
-    current = WordPair.random();
-    notifyListeners();
-  }
-
-  var favorites = <WordPair>[];
-
-  void toggleFavorite() {
-    if (favorites.contains(current)) {
-      favorites.remove(current);
-    } else {
-      favorites.add(current);
-    }
-    notifyListeners();
-  }
-}
-// ...
-
-class MyHomePage extends StatefulWidget {
+class ImageUploadScreen extends StatefulWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _ImageUploadScreenState createState() => _ImageUploadScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _ImageUploadScreenState extends State<ImageUploadScreen> {
+  List<File> images = [];
 
-  var selectedIndex = 0;
+  void pickImages() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.image,
+      withData: true,
+    );
 
-  @override
-  Widget build(BuildContext context) {
-    Widget page;
-    switch (selectedIndex) {
-      case 0:
-        page = GeneratorPage();
-        break;
-      case 1:
-        page = FavoritesPage();
-        break;
-      default:
-        throw UnimplementedError('no widget for $selectedIndex');
+    if (result != null) {
+      setState(() {
+        images.addAll(result.paths.map((path) => File(path!)).toList());
+      });
     }
+  }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Scaffold(
-          body: Row(
-            children: [
-              SafeArea(
-                child: NavigationRail(
-                  extended: constraints.maxWidth >= 600,
-                  destinations: [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.home),
-                      label: Text('Home'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.favorite),
-                      label: Text('Favorites'),
-                    ),
-                  ],
-                  selectedIndex: selectedIndex,
-                  onDestinationSelected: (value) {
-                    setState(() {
-                      selectedIndex = value;
-                    });
-                  },
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  child: page,
-                ),
-              ),
-            ],
-          ),
-        );
+  void removeImage(int index) {
+    setState(() {
+      images.removeAt(index);
+    });
+  }
+
+  Future<void> uploadImages() async {
+    // Logic to upload images
+    // You would replace this with your actual upload function
+    const String uploadUrl = 'http://127.0.0.1:8000/upload';
+
+    // Function to handle file picking and uploading
+    if (images.isNotEmpty) {
+      try {
+        var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
+        for (var file in images) {
+          request.files.add(await http.MultipartFile.fromPath(
+            'files', file.path));  // 'files' is the field name for the backend to expect
+        }
+        var response = await request.send();
+        print(response.statusCode);
+        if (response.statusCode == 200) {
+          print('File uploaded successfully');
+        } else {
+          print('Failed to upload file');
+        }
+      } catch (e) {
+        print('Error occurred: $e');
       }
-    );
+    } else {
+      // User canceled the picker
+      print('No file selected');
+    }
+    print('Uploading ${images.length} images');
+    // Clear images after uploading
+    setState(() {
+      images.clear();
+    });
+  
   }
-}
-
-class GeneratorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
-    var pair = appState.current;
-
-    IconData icon;
-    if (appState.favorites.contains(pair)) {
-      icon = Icons.favorite;
-    } else {
-      icon = Icons.favorite_border;
-    }
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Upload Images for Recipe Suggestions'),
+      ),
+      body: Column(
         children: [
-          BigCard(pair: pair),
-          SizedBox(height: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  appState.toggleFavorite();
-                },
-                icon: Icon(icon),
-                label: Text('Like'),
-              ),
-              SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () {
-                  appState.getNext();
-                },
-                child: Text('Next'),
-              ),
-            ],
+          Expanded(
+            child: ListView.builder(
+              itemCount: images.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  leading: Image.file(images[index]),
+                  title: Text('Image ${index + 1}'),
+                  trailing: IconButton(
+                    icon: Icon(Icons.remove_circle),
+                    onPressed: () => removeImage(index),
+                  ),
+                );
+              },
+            ),
+          ),
+          ElevatedButton(
+            onPressed: pickImages,
+            child: Text('Pick More Images'),
+          ),
+          ElevatedButton(
+            onPressed: uploadImages,
+            child: Text('Get Recipe'),
           ),
         ],
       ),
@@ -155,58 +116,278 @@ class GeneratorPage extends StatelessWidget {
   }
 }
 
-class FavoritesPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
+// void main() {
+//   runApp(MyApp());
+// }
 
-    if (appState.favorites.isEmpty) {
-      return Center(
-        child: Text('No favorites yet.'),
-      );
-    }
+// class MyApp extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       home: HomePage(),
+//     );
+//   }
+// }
 
-    return ListView(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text('You have '
-              '${appState.favorites.length} favorites:'),
-        ),
-        for (var pair in appState.favorites)
-          ListTile(
-            leading: Icon(Icons.favorite),
-            title: Text(pair.asLowerCase),
-          ),
-      ],
-    );
-  }
-}
+// class HomePage extends StatefulWidget {
+//   @override
+//   _HomePageState createState() => _HomePageState();
+// }
 
-class BigCard extends StatelessWidget {
-  const BigCard({
-    super.key,
-    required this.pair,
-  });
+// class _HomePageState extends State<HomePage> {
+//   // URL of your backend service
+//   final String uploadUrl = 'http://127.0.0.1:8000/upload';
 
-  final WordPair pair;
+//   // Function to handle file picking and uploading
+//   Future<void> pickAndUploadFile() async {
+//     FilePickerResult? result = await FilePicker.platform.pickFiles(
+//       allowMultiple: true,
+//       type: FileType.image,
+//     );
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.displayMedium!.copyWith(
-      color: theme.colorScheme.onPrimary,
-    );
+//     if (result != null) {
+//       try {
+//         var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
+//         for (var file in result.files) {
+//           request.files.add(await http.MultipartFile.fromPath(
+//             'files', file.path!));  // 'files' is the field name for the backend to expect
+//         }
+//         var response = await request.send();
+//         print(response.statusCode);
+//         if (response.statusCode == 200) {
+//           print('File uploaded successfully');
+//         } else {
+//           print('Failed to upload file');
+//         }
+//       } catch (e) {
+//         print('Error occurred: $e');
+//       }
+//     } else {
+//       // User canceled the picker
+//       print('No file selected');
+//     }
+//   }
 
-    return Card(
-      color: theme.colorScheme.primary,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(pair.asLowerCase, style: style),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text('Flutter File Upload'),
+//       ),
+//       body: Center(
+//         child: ElevatedButton(
+//           onPressed: pickAndUploadFile,
+//           child: Text('Pick and Upload Image'),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+// void main() {
+//   runApp(MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return ChangeNotifierProvider(
+//       create: (context) => MyAppState(),
+//       child: MaterialApp(
+//         title: 'Recipe App',
+//         theme: ThemeData(
+//           useMaterial3: true,
+//           colorScheme: ColorScheme.fromSeed(seedColor: Color.fromRGBO(0, 255, 0, 1.0)),
+//         ),
+//         home: MyHomePage(),
+//       ),
+//     );
+//   }
+// }
+
+// class MyAppState extends ChangeNotifier {
+//   var current = WordPair.random();
+
+//   void getNext() {
+//     current = WordPair.random();
+//     notifyListeners();
+//   }
+
+//   var favorites = <WordPair>[];
+
+//   void toggleFavorite() {
+//     if (favorites.contains(current)) {
+//       favorites.remove(current);
+//     } else {
+//       favorites.add(current);
+//     }
+//     notifyListeners();
+//   }
+// }
+// // ...
+
+// class MyHomePage extends StatefulWidget {
+//   @override
+//   State<MyHomePage> createState() => _MyHomePageState();
+// }
+
+// class _MyHomePageState extends State<MyHomePage> {
+
+//   var selectedIndex = 0;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     Widget page;
+//     switch (selectedIndex) {
+//       case 0:
+//         page = GeneratorPage();
+//         break;
+//       case 1:
+//         page = FavoritesPage();
+//         break;
+//       default:
+//         throw UnimplementedError('no widget for $selectedIndex');
+//     }
+
+//     return LayoutBuilder(
+//       builder: (context, constraints) {
+//         return Scaffold(
+//           body: Row(
+//             children: [
+//               SafeArea(
+//                 child: NavigationRail(
+//                   extended: constraints.maxWidth >= 600,
+//                   destinations: [
+//                     NavigationRailDestination(
+//                       icon: Icon(Icons.home),
+//                       label: Text('Home'),
+//                     ),
+//                     NavigationRailDestination(
+//                       icon: Icon(Icons.favorite),
+//                       label: Text('Favorites'),
+//                     ),
+//                   ],
+//                   selectedIndex: selectedIndex,
+//                   onDestinationSelected: (value) {
+//                     setState(() {
+//                       selectedIndex = value;
+//                     });
+//                   },
+//                 ),
+//               ),
+//               Expanded(
+//                 child: Container(
+//                   color: Theme.of(context).colorScheme.primaryContainer,
+//                   child: page,
+//                 ),
+//               ),
+//             ],
+//           ),
+//         );
+//       }
+//     );
+//   }
+// }
+
+// class GeneratorPage extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     var appState = context.watch<MyAppState>();
+//     var pair = appState.current;
+
+//     IconData icon;
+//     if (appState.favorites.contains(pair)) {
+//       icon = Icons.favorite;
+//     } else {
+//       icon = Icons.favorite_border;
+//     }
+
+//     return Center(
+//       child: Column(
+//         mainAxisAlignment: MainAxisAlignment.center,
+//         children: [
+//           BigCard(pair: pair),
+//           SizedBox(height: 10),
+//           Row(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               ElevatedButton.icon(
+//                 onPressed: () {
+//                   appState.toggleFavorite();
+//                 },
+//                 icon: Icon(icon),
+//                 label: Text('Like'),
+//               ),
+//               SizedBox(width: 10),
+//               ElevatedButton(
+//                 onPressed: () {
+//                   appState.getNext();
+//                 },
+//                 child: Text('Next'),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+// class FavoritesPage extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     var appState = context.watch<MyAppState>();
+
+//     if (appState.favorites.isEmpty) {
+//       return Center(
+//         child: Text('No favorites yet.'),
+//       );
+//     }
+
+//     return ListView(
+//       children: [
+//         Padding(
+//           padding: const EdgeInsets.all(20),
+//           child: Text('You have '
+//               '${appState.favorites.length} favorites:'),
+//         ),
+//         for (var pair in appState.favorites)
+//           ListTile(
+//             leading: Icon(Icons.favorite),
+//             title: Text(pair.asLowerCase),
+//           ),
+//       ],
+//     );
+//   }
+// }
+
+// class BigCard extends StatelessWidget {
+//   const BigCard({
+//     super.key,
+//     required this.pair,
+//   });
+
+//   final WordPair pair;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final theme = Theme.of(context);
+//     final style = theme.textTheme.displayMedium!.copyWith(
+//       color: theme.colorScheme.onPrimary,
+//     );
+
+//     return Card(
+//       color: theme.colorScheme.primary,
+//       child: Padding(
+//         padding: const EdgeInsets.all(8.0),
+//         child: Text(pair.asLowerCase, style: style),
+//       ),
+//     );
+//   }
+// }
 
 
 // void main() {
