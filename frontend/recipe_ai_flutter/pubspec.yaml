@@ -13,6 +13,10 @@ dependencies:
     sdk: flutter
   file_picker: ^5.2.3 
   http: ^1.2.1 
+  sqflite_common_ffi: any
+  path: any
+  path_provider: ^2.0.2
+  flutter_markdown: ^0.7.0 
 
 dev_dependencies:
   flutter_test:

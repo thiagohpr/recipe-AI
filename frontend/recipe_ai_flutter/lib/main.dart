@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'database_helper.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 void main() {
   runApp(MyApp());
@@ -24,6 +26,7 @@ class ImageUploadScreen extends StatefulWidget {
 
 class _ImageUploadScreenState extends State<ImageUploadScreen> {
   List<File> images = [];
+  final dbHelper = DatabaseHelper();
 
   void pickImages() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -46,22 +49,33 @@ class _ImageUploadScreenState extends State<ImageUploadScreen> {
   }
 
   Future<void> uploadImages() async {
-    // Logic to upload images
-    // You would replace this with your actual upload function
     const String uploadUrl = 'http://127.0.0.1:8000/upload';
-
-    // Function to handle file picking and uploading
     if (images.isNotEmpty) {
       try {
         var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
         for (var file in images) {
-          request.files.add(await http.MultipartFile.fromPath(
-            'files', file.path));  // 'files' is the field name for the backend to expect
+          request.files.add(await http.MultipartFile.fromPath('files', file.path));
         }
         var response = await request.send();
-        print(response.statusCode);
         if (response.statusCode == 200) {
-          print('File uploaded successfully');
+          // Assuming the server sends back a recipe in plain text format
+          final respStr = await response.stream.bytesToString();
+          await dbHelper.insertRecipe("Recipe from Server", respStr);
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Recipe Received'),
+              content: Text(respStr),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Close'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+          );
         } else {
           print('Failed to upload file');
         }
@@ -69,16 +83,10 @@ class _ImageUploadScreenState extends State<ImageUploadScreen> {
         print('Error occurred: $e');
       }
     } else {
-      // User canceled the picker
       print('No file selected');
     }
-    print('Uploading ${images.length} images');
-    // Clear images after uploading
-    setState(() {
-      images.clear();
-    });
-  
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,7 +118,42 @@ class _ImageUploadScreenState extends State<ImageUploadScreen> {
             onPressed: uploadImages,
             child: Text('Get Recipe'),
           ),
+          ElevatedButton(
+            onPressed: () async {
+              List<Map<String, dynamic>> recipes = await dbHelper.getRecipes();
+              String recipeMarkdown = recipes[0]['content'];
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RecipeScreen(recipeMarkdown: recipeMarkdown),
+                ),
+              );
+            },
+            child: Text('View Saved Recipes'),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class RecipeScreen extends StatelessWidget {
+  final String recipeMarkdown;  // Pass the Markdown formatted recipe string to this variable
+
+  RecipeScreen({required this.recipeMarkdown});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Recipe Details'),
+      ),
+      body: Markdown(
+        data: recipeMarkdown,
+        styleSheet: MarkdownStyleSheet(
+          h1: TextStyle(color: Colors.blue, fontSize: 24), // Example style for h1
+          p: TextStyle(fontSize: 18), // Paragraph styling
+        ),
       ),
     );
   }

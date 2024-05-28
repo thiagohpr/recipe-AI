@@ -27,3 +27,5 @@ frontend/recipe_ai_flutter/app.*.map.json
 frontend/recipe_ai_flutter/android/app/debug
 frontend/recipe_ai_flutter/android/app/profile
 frontend/recipe_ai_flutter/android/app/release
+
+backend/model/
