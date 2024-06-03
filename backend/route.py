@@ -89,7 +89,8 @@ async def upload_image(files: List[UploadFile] = File(...)):
 
 
 def send_genai_request(predictions):
-    GOOGLE_API_KEY = 'AIzaSyAnUYDGbJ5x0VggngIszy0UCh_6m8axbF4'
+    with open('google_api_key', 'r') as file:
+        GOOGLE_API_KEY = file.read()
 
     genai.configure(api_key=GOOGLE_API_KEY)
 

@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
-import 'database_helper.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 void main() {
@@ -26,7 +25,6 @@ class ImageUploadScreen extends StatefulWidget {
 
 class _ImageUploadScreenState extends State<ImageUploadScreen> {
   List<File> images = [];
-  final dbHelper = DatabaseHelper();
 
   void pickImages() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -60,7 +58,6 @@ class _ImageUploadScreenState extends State<ImageUploadScreen> {
         if (response.statusCode == 200) {
           // Assuming the server sends back a recipe in plain text format
           final respStr = await response.stream.bytesToString();
-          await dbHelper.insertRecipe("Recipe from Server", respStr);
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
@@ -117,20 +114,7 @@ class _ImageUploadScreenState extends State<ImageUploadScreen> {
           ElevatedButton(
             onPressed: uploadImages,
             child: Text('Get Recipe'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              List<Map<String, dynamic>> recipes = await dbHelper.getRecipes();
-              String recipeMarkdown = recipes[0]['content'];
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RecipeScreen(recipeMarkdown: recipeMarkdown),
-                ),
-              );
-            },
-            child: Text('View Saved Recipes'),
-          ),
+          )
         ],
       ),
     );
