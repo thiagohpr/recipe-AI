@@ -31,6 +31,6 @@ Wait until some tensorflow warnings appear and the message "Uvicorn running on h
 
 - There are some test images on dataset/test directory to be used while testing the app
 
-  ## Other Files
-  - The "train_model.ipynb" has the jupyter notebook used on Google Colab to train the model of the project
+## Other Files
+- The "train_model.ipynb" has the jupyter notebook used on Google Colab to train the model of the project
   
