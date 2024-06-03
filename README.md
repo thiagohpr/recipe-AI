@@ -1,5 +1,6 @@
 # recipe-AI 
 Felipe Drummond
+
 Thiago Hampl
 
 ## Project Setup
