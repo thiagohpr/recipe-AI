@@ -25,7 +25,7 @@ Wait until some tensorflow warnings appear and the message "Uvicorn running on h
 
 - The button "Pick More Images" opens the file picker and lets the user select one or more groceries images
 
-- After selecting the images, the button "Get Recipe" send a request to the backend and then waits for the recipe response
+- After selecting the images, the button "Get Recipe" sends a request to the backend and then waits for the recipe response
 
 - The groceries predicted by the model are printed on the backend powershell window
 
